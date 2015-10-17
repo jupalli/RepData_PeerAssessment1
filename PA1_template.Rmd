@@ -1,25 +1,123 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "Rama"
+date: "October 15, 2015"
+output: html_document
 ---
+* ###  Loading and preprocessing the data
+```{r}
+setwd("C:/Rjupalli/CourseEra/2015/5-Reproducible Research/Project-1")
 
+#1 - Loading the data
+am_data <- read.csv("activity.csv", stringsAsFactors = F)
 
-## Loading and preprocessing the data
+#2 - Processing the data - converting "date"(character string) into "Date" format
+am_data$date <- as.Date(am_data$date, format = "%Y-%m-%d")
+```
+<br>  
 
+* ### Calculating mean total number of steps taken per day
+```{r}
+#1 - Total number of steps taken per day
+ttlsteps_per_day <- aggregate(. ~ date, data=am_data,FUN = sum)
+```
 
+Total number of steps taken per day (excluding days with "NA" data):
+```{r, echo=FALSE}
+ttlsteps_per_day[,1:2]
+```
 
-## What is mean total number of steps taken per day?
+```{r, echo=FALSE}
+#2 - Histogram of the total number of steps taken each day
+hist(ttlsteps_per_day$steps,col = "Red",xlab = "Total number of steps taken each day", main = "Fig1. Histogram of total steps taken each day")
+```
 
+```{r}
+#3 - Mean and median of the total number of steps taken per day
+mean_ttlsteps_per_day <- mean(ttlsteps_per_day$steps)
+```
+Mean of the total number of steps taken per day(excluding days with "NA" data):
+**`r mean_ttlsteps_per_day`**
+<br>
+```{r}
+median_ttlsteps_per_day <- median(ttlsteps_per_day$steps)
+```
+Median of the total number of steps taken per day(excluding days with "NA" data): **`r median_ttlsteps_per_day`**
+<br>
+<br>
 
+* ### Visulaizing average daily activity pattern
+```{r}
+mean_ttlsteps_per_interval <- aggregate(. ~ interval, data=am_data,mean)
+mean_ttlsteps_per_interval$steps <- round(mean_ttlsteps_per_interval$steps, digits = 4)
+```
 
-## What is the average daily activity pattern?
+```{r,echo=FALSE}
+with(mean_ttlsteps_per_interval, plot(interval,steps,type="n",xlab="Interval",main="Fig2. Time series plot of the 5-minute interval (x-axis) & \n average number of steps taken, averaged across all days (y-axis)",col="blue"))
+with(mean_ttlsteps_per_interval,lines(interval,steps),type="l",col="blue")
+```
 
+5-minute interval containing the maximum number of steps, on average across all the days in the dataset is **`r mean_ttlsteps_per_interval[which.max(mean_ttlsteps_per_interval$steps),]$interval`**
 
+```{r, echo=FALSE}
+mean_ttlsteps_per_interval[which.max(mean_ttlsteps_per_interval$steps),1:2]
+```
+<br>
 
-## Imputing missing values
+* ### Imputing missing values
+Total number of missing values in the dataset (i.e. the total number of rows with NAs) is **`r sum(is.na(am_data$steps))`**
 
+```{r}
+#Creating a new dataset, same as the original dataset but with the missing data filled in.
+am_data_no_NAs <- am_data
+am_data_no_NAs$steps <- ifelse(is.na(am_data$steps) == TRUE, mean_ttlsteps_per_interval$steps[mean_ttlsteps_per_interval$interval %in% am_data_no_NAs$interval], am_data_no_NAs$steps)
+ttlsteps_no_NAs <- aggregate(. ~ date, data=am_data_no_NAs,FUN = sum)
+```
 
+```{r echo=FALSE}
+hist(ttlsteps_no_NAs$steps,col = "Red",xlab = "Total number of steps taken each day", main = "Fig3. Histogram of total steps taken each day")
+```
+<br>
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+#Calculate and report the mean total number of steps taken per day
+mean_ttlsteps_per_day_no_NAs <- mean(ttlsteps_no_NAs$steps)
+```
+Mean total number of steps taken per day (with "NA" replaced by the interval mean values): **`r mean_ttlsteps_per_day_no_NAs`**
+<br>
+
+```{r}
+#Calculate and report the median total number of steps taken per day
+median_ttlsteps_per_day_no_NAs <- median(ttlsteps_no_NAs$steps)
+```
+Median total number of steps taken per day (with "NA" replaced by the interval mean values):
+**`r median_ttlsteps_per_day_no_NAs`**
+<br>
+
+* Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+<br>
+
+**They do not. With only about more than 15% of the values being "NA"s and with the "NA" values only in 8 out of 61 days, combined with the fact that missing values imputed by thier corresponding interval means, impact of imputing missing data is negligible. However, with missing values imputed by thier corresponding interval means, both mean and median match. **
+<br>
+<br>
+
+* ### Difference in activity patterns between weekdays and weekends?
+```{r}
+#1 - Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+am_data_with_days <- am_data_no_NAs
+am_data_with_days[, "day"] <- weekdays(as.Date(am_data_with_days$date))
+am_data_with_days$day <- ifelse(am_data_with_days$day %in% c("Saturday", "Sunday"), "weekend","weekday")
+am_data_with_days$day <- as.factor(am_data_with_days$day)
+
+mean_steps_per_interval_per_day <-aggregate(steps ~ interval + day, data=am_data_with_days,mean)
+```
+
+```{r, echo=FALSE}
+library (lattice)
+xyplot (steps ~ interval | day, data=mean_steps_per_interval_per_day,layout=c(1,2),type ="l", xlab="Interval",ylab = "Number of steps", main = "Fig4. Avg activity pattern \n weekend vs weekday")
+```
+
+* Are there differences in activity patterns between weekdays and weekends?
+<br>
+**Yes. There are. On average the anonymous individaul from whom this data is collected seems to move more on weekends than weekdays during the two months data is provided. On weekend, the individual seems to move more from the morning to the evening where as on weekdays, the activity seems to more centered around the morning and small peaks during lunch time and evening. **
